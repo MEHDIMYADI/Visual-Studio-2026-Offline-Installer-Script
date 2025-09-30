@@ -210,42 +210,59 @@ REM ==========================
 REM %1 = folder name
 set "FOLDER=%~1"
 
-REM Extract NAME and VERSION from folder name
-for /f "tokens=1,2 delims=," %%a in ("%FOLDER%") do (
+REM Extract NAME, VERSION and PLATFORM from folder name
+for /f "tokens=1,2,3 delims=," %%a in ("%FOLDER%") do (
     set "NAME=%%a"
     set "VERSTR=%%b"
+    set "PLATFORM=%%c"
 )
+
+REM If no platform found, set it to empty
+if not defined PLATFORM set "PLATFORM="
+
 set "VERSION=!VERSTR:version=!"
 
-REM Find latest version for this NAME
+REM Find latest version for this NAME and PLATFORM combination
 set "LATEST=!VERSION!"
-for /d %%X in ("%LAYOUT_DIR%\!NAME!,version=*") do (
+for /d %%X in ("%LAYOUT_DIR%\!NAME!,version=*!PLATFORM!") do (
     set "OTHER=%%~nxX"
-    for /f "tokens=1,2 delims=," %%m in ("!OTHER!") do (
+    
+    REM Extract components from other folder
+    for /f "tokens=1,2,3 delims=," %%m in ("!OTHER!") do (
         set "ONAME=%%m"
         set "OVERSTR=%%n"
+        set "OPLATFORM=%%o"
     )
-    set "OVER=!OVERSTR:version=!"
-
-    REM Compare versions manually
-    set "ISNEWER=0"
-    for /f "tokens=1-4 delims=." %%i in ("!LATEST!") do (
-        set "L1=%%i" & set "L2=%%j" & set "L3=%%k" & set "L4=%%l"
+    
+    REM If platform is not defined for other folder, set it to empty
+    if not defined OPLATFORM set "OPLATFORM="
+    
+    REM Only compare if NAME and PLATFORM match
+    if "!ONAME!"=="!NAME!" if "!OPLATFORM!"=="!PLATFORM!" (
+        set "OVER=!OVERSTR:version=!"
+        
+        REM Compare versions manually
+        set "ISNEWER=0"
+        for /f "tokens=1-4 delims=." %%i in ("!LATEST!") do (
+            set "L1=%%i" & set "L2=%%j" & set "L3=%%k" & set "L4=%%l"
+        )
+        for /f "tokens=1-4 delims=." %%i in ("!OVER!") do (
+            set "O1=%%i" & set "O2=%%j" & set "O3=%%k" & set "O4=%%l"
+        )
+        
+        REM Compare each part of version
+        if !O1! GTR !L1! (set "ISNEWER=1") else if !O1! LSS !L1! (set "ISNEWER=-1")
+        if !ISNEWER!==0 (
+            if !O2! GTR !L2! (set "ISNEWER=1") else if !O2! LSS !L2! (set "ISNEWER=-1")
+        )
+        if !ISNEWER!==0 (
+            if !O3! GTR !L3! (set "ISNEWER=1") else if !O3! LSS !L3! (set "ISNEWER=-1")
+        )
+        if !ISNEWER!==0 (
+            if !O4! GTR !L4! (set "ISNEWER=1") else if !O4! LSS !L4! (set "ISNEWER=-1")
+        )
+        if !ISNEWER! GTR 0 set "LATEST=!OVER!"
     )
-    for /f "tokens=1-4 delims=." %%i in ("!OVER!") do (
-        set "O1=%%i" & set "O2=%%j" & set "O3=%%k" & set "O4=%%l"
-    )
-    if !O1! GTR !L1! (set "ISNEWER=1") else if !O1! LSS !L1! (set "ISNEWER=-1")
-    if !ISNEWER!==0 (
-        if !O2! GTR !L2! (set "ISNEWER=1") else if !O2! LSS !L2! (set "ISNEWER=-1")
-    )
-    if !ISNEWER!==0 (
-        if !O3! GTR !L3! (set "ISNEWER=1") else if !O3! LSS !L3! (set "ISNEWER=-1")
-    )
-    if !ISNEWER!==0 (
-        if !O4! GTR !L4! (set "ISNEWER=1") else if !O4! LSS !L4! (set "ISNEWER=-1")
-    )
-    if !ISNEWER! GTR 0 set "LATEST=!OVER!"
 )
 
 REM Check if current version is older
@@ -256,6 +273,7 @@ for /f "tokens=1-4 delims=." %%i in ("!VERSION!") do (
 for /f "tokens=1-4 delims=." %%i in ("!LATEST!") do (
     set "N1=%%i" & set "N2=%%j" & set "N3=%%k" & set "N4=%%l"
 )
+
 if !C1! LSS !N1! (set "ISOLD=1") else if !C1! EQU !N1! (
     if !C2! LSS !N2! (set "ISOLD=1") else if !C2! EQU !N2! (
         if !C3! LSS !N3! (set "ISOLD=1") else if !C3! EQU !N3! (
@@ -271,19 +289,4 @@ if !ISOLD! EQU 1 (
     set "OLD_FOUND=1"
 )
 
-goto :eof
-
-REM ==========================
-:HANDLE_RESULT
-REM ==========================
-REM Check result after processing all folders
-if "%OLD_FOUND%"=="0" (
-    echo No old workloads found.
-    pause
-) else (
-    echo.
-    echo Old workloads list saved in %OLDFILE%
-    echo All old versions of workloads have been listed in the log file.
-    pause
-)
 goto :eof
