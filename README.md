@@ -13,13 +13,13 @@ Currently based on **Insider builds** – the script will be updated once the **
 - ✅ Detect and update if a newer bootstrapper version exists
 - ✅ Create or update an **offline layout** (resumes if interrupted)
 - ✅ Launch Visual Studio Installer in GUI mode from the offline layout
-- ✅ Detailed log file (`VSInstaller.log`) for troubleshooting
+- ✅ Check for old workloads and optionally delete outdated versions
+- ✅ Detailed log file (`oldfiles.log`) for list of old workloads found
 
 ---
 
 ## 📂 Folder Structure
 - `VSInstaller.bat` → Main script  
-- `VSInstaller.log` → Log file (auto-generated)  
 - `VSLayout\` → All offline installer files  
 
 ---
