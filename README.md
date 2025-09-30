@@ -3,6 +3,8 @@
 A Windows batch script to automate the process of downloading, updating, and running **Visual Studio 2026** in **offline layout mode**.  
 Currently based on **Insider builds** – the script will be updated once the **official release (RTM)** is available.  
 
+<img width="266" height="223" alt="image" src="https://github.com/user-attachments/assets/2eb57715-7edc-4b6c-88d1-7830f4d3bffd" />
+
 ---
 
 ## ✨ Features
