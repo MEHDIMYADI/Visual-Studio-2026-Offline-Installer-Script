@@ -64,6 +64,7 @@ set "VS_URL=https://aka.ms/vs/18/insiders/vs_Community.exe"
 goto NEXT_STEP
 
 :NEXT_STEP
+echo.
 echo Selected edition: %VS_EXE%
 
 REM ==========================
@@ -74,11 +75,14 @@ echo What do you want to do next?
 echo 1 - Download/Update bootstrapper and create offline layout
 echo 2 - Install from existing offline layout
 echo 3 - Check for old workloads from existing offline layout
-set /p ACTION_CHOICE=Enter number [1-3]:
+echo 4 - Delete old workloads listed in .log file and remove .log file
+set /p ACTION_CHOICE=Enter number [1-4]:
 
 if "%ACTION_CHOICE%"=="1" goto ACTION_1
 if "%ACTION_CHOICE%"=="2" goto ACTION_2
 if "%ACTION_CHOICE%"=="3" goto ACTION_3
+if "%ACTION_CHOICE%"=="4" goto ACTION_4
+goto ACTION_MENU
 
 :ACTION_1
 REM Download/update bootstrapper
@@ -123,110 +127,163 @@ goto ACTION_MENU
 
 :ACTION_3
 REM ==========================
-REM Check for old workloads - Skip folders without version silently
+REM Check for old workloads from existing offline layout
 
+REM If layout folder does not exist, go back to main menu
 if not exist "%LAYOUT_DIR%" (
     echo Layout folder not found! Please create offline layout first.
     pause
     goto ACTION_MENU
 )
 
+echo.
 echo Searching for old workloads...
+
+REM Variable to detect if any old workloads are found
 set "OLD_FOUND=0"
+
+REM File to save old workload names
 set "OLDFILE=%SCRIPT_DIR%oldfiles.log"
 del "%OLDFILE%" >nul 2>&1
 
 REM ==========================
-REM Process folders
+REM Process each folder inside layout
 for /d %%D in ("%LAYOUT_DIR%\*") do (
     set "FOLDER=%%~nxD"
     
     REM Only process folders that contain "version="
     echo !FOLDER! | findstr /I "version=" >nul
-    if errorlevel 0 (
-        REM Extract NAME and VERSION safely
-        for /f "tokens=1,2 delims=," %%a in ("!FOLDER!") do (
-            set "NAME=%%a"
-            set "VERSTR=%%b"
-        )
-        set "VERSION=!VERSTR:version=!"
-
-        REM Find latest version for this NAME
-        set "LATEST=!VERSION!"
-        for /d %%X in ("%LAYOUT_DIR%\!NAME!,version=*") do (
-            set "OTHER=%%~nxX"
-            for /f "tokens=1,2 delims=," %%m in ("!OTHER!") do (
-                set "ONAME=%%m"
-                set "OVERSTR=%%n"
-            )
-            set "OVER=!OVERSTR:version=!"
-            
-            REM Compare version numbers manually
-            set "ISNEWER=0"
-            for /f "tokens=1-4 delims=." %%i in ("!LATEST!") do (
-                set "L1=%%i" & set "L2=%%j" & set "L3=%%k" & set "L4=%%l"
-            )
-            for /f "tokens=1-4 delims=." %%i in ("!OVER!") do (
-                set "O1=%%i" & set "O2=%%j" & set "O3=%%k" & set "O4=%%l"
-            )
-
-            if !O1! GTR !L1! (set "ISNEWER=1") else if !O1! LSS !L1! (set "ISNEWER=-1")
-            if !ISNEWER!==0 (
-                if !O2! GTR !L2! (set "ISNEWER=1") else if !O2! LSS !L2! (set "ISNEWER=-1")
-            )
-            if !ISNEWER!==0 (
-                if !O3! GTR !L3! (set "ISNEWER=1") else if !O3! LSS !L3! (set "ISNEWER=-1")
-            )
-            if !ISNEWER!==0 (
-                if !O4! GTR !L4! (set "ISNEWER=1") else if !O4! LSS !L4! (set "ISNEWER=-1")
-            )
-
-            if !ISNEWER! GTR 0 set "LATEST=!OVER!"
-        )
-
-        REM If current version is older than latest → log it
-        set "ISOLD=0"
-        for /f "tokens=1-4 delims=." %%i in ("!VERSION!") do (
-            set "C1=%%i" & set "C2=%%j" & set "C3=%%k" & set "C4=%%l"
-        )
-        for /f "tokens=1-4 delims=." %%i in ("!LATEST!") do (
-            set "N1=%%i" & set "N2=%%j" & set "N3=%%k" & set "N4=%%l"
-        )
-
-        if !C1! LSS !N1! (set "ISOLD=1") else if !C1! EQU !N1! (
-            if !C2! LSS !N2! (set "ISOLD=1") else if !C2! EQU !N2! (
-                if !C3! LSS !N3! (set "ISOLD=1") else if !C3! EQU !N3! (
-                    if !C4! LSS !N4! (set "ISOLD=1")
-                )
-            )
-        )
-
-        if !ISOLD! EQU 1 (
-            echo Found old workload: !FOLDER!
-            echo !FOLDER!>>"%OLDFILE%"
-            set "OLD_FOUND=1"
-        )
+    if !errorlevel! EQU 0 (
+        REM Call function to process each folder
+        call :PROCESS_FOLDER "!FOLDER!"
     )
 )
 
 REM ==========================
-REM Handle result
-if "%OLD_FOUND%"=="0" (
-    echo No old workloads found.
-) else (
-    echo.
-    echo Old workloads list saved in %OLDFILE%
-    set /p CONFIRM=Do you want to delete ALL these old workloads? (Y/N):
-    if /i "!CONFIRM!"=="Y" (
-        for /f "usebackq delims=" %%L in ("%OLDFILE%") do (
+REM Handle result after loop
+call :HANDLE_RESULT
+
+echo All old versions of workloads have been listed in the log file.
+pause
+goto ACTION_MENU
+
+:ACTION_4
+REM ==========================
+REM Delete old workloads listed in .log file and remove .log file
+
+set "OLDFILE=%SCRIPT_DIR%oldfiles.log"
+
+if not exist "%OLDFILE%" (
+    echo No oldfiles.log found. Please run option 3 first to generate the list.
+    pause
+    goto ACTION_MENU
+)
+
+echo.
+echo Old workloads found in %OLDFILE%:
+type "%OLDFILE%"
+echo.
+set /p CONFIRM=Do you want to delete ALL these old workloads and remove the log file? (Y/N):
+
+if /i "%CONFIRM%"=="Y" (
+    echo Deleting old workloads...
+    for /f "usebackq delims=" %%L in ("%OLDFILE%") do (
+        if exist "%LAYOUT_DIR%\%%L" (
             echo Deleting %%L ...
             rd /s /q "%LAYOUT_DIR%\%%L"
+        ) else (
+            echo Folder not found: %%L
         )
-        echo All old workloads deleted.
-    ) else (
-        echo Deletion skipped by user.
+    )
+    echo Deleting log file...
+    del "%OLDFILE%"
+    echo All old workloads deleted and log file removed.
+) else (
+    echo Deletion cancelled by user.
+)
+pause
+goto ACTION_MENU
+
+REM ==========================
+:PROCESS_FOLDER
+REM ==========================
+REM %1 = folder name
+set "FOLDER=%~1"
+
+REM Extract NAME and VERSION from folder name
+for /f "tokens=1,2 delims=," %%a in ("%FOLDER%") do (
+    set "NAME=%%a"
+    set "VERSTR=%%b"
+)
+set "VERSION=!VERSTR:version=!"
+
+REM Find latest version for this NAME
+set "LATEST=!VERSION!"
+for /d %%X in ("%LAYOUT_DIR%\!NAME!,version=*") do (
+    set "OTHER=%%~nxX"
+    for /f "tokens=1,2 delims=," %%m in ("!OTHER!") do (
+        set "ONAME=%%m"
+        set "OVERSTR=%%n"
+    )
+    set "OVER=!OVERSTR:version=!"
+
+    REM Compare versions manually
+    set "ISNEWER=0"
+    for /f "tokens=1-4 delims=." %%i in ("!LATEST!") do (
+        set "L1=%%i" & set "L2=%%j" & set "L3=%%k" & set "L4=%%l"
+    )
+    for /f "tokens=1-4 delims=." %%i in ("!OVER!") do (
+        set "O1=%%i" & set "O2=%%j" & set "O3=%%k" & set "O4=%%l"
+    )
+    if !O1! GTR !L1! (set "ISNEWER=1") else if !O1! LSS !L1! (set "ISNEWER=-1")
+    if !ISNEWER!==0 (
+        if !O2! GTR !L2! (set "ISNEWER=1") else if !O2! LSS !L2! (set "ISNEWER=-1")
+    )
+    if !ISNEWER!==0 (
+        if !O3! GTR !L3! (set "ISNEWER=1") else if !O3! LSS !L3! (set "ISNEWER=-1")
+    )
+    if !ISNEWER!==0 (
+        if !O4! GTR !L4! (set "ISNEWER=1") else if !O4! LSS !L4! (set "ISNEWER=-1")
+    )
+    if !ISNEWER! GTR 0 set "LATEST=!OVER!"
+)
+
+REM Check if current version is older
+set "ISOLD=0"
+for /f "tokens=1-4 delims=." %%i in ("!VERSION!") do (
+    set "C1=%%i" & set "C2=%%j" & set "C3=%%k" & set "C4=%%l"
+)
+for /f "tokens=1-4 delims=." %%i in ("!LATEST!") do (
+    set "N1=%%i" & set "N2=%%j" & set "N3=%%k" & set "N4=%%l"
+)
+if !C1! LSS !N1! (set "ISOLD=1") else if !C1! EQU !N1! (
+    if !C2! LSS !N2! (set "ISOLD=1") else if !C2! EQU !N2! (
+        if !C3! LSS !N3! (set "ISOLD=1") else if !C3! EQU !N3! (
+            if !C4! LSS !N4! (set "ISOLD=1")
+        )
     )
 )
 
-pause
-goto ACTION_MENU
+REM If version is old, save it and mark OLD_FOUND
+if !ISOLD! EQU 1 (
+    echo Found old workload: !FOLDER!
+    echo !FOLDER!>>"%OLDFILE%"
+    set "OLD_FOUND=1"
+)
+
+goto :eof
+
+REM ==========================
+:HANDLE_RESULT
+REM ==========================
+REM Check result after processing all folders
+if "%OLD_FOUND%"=="0" (
+    echo No old workloads found.
+    pause
+) else (
+    echo.
+    echo Old workloads list saved in %OLDFILE%
+    echo All old versions of workloads have been listed in the log file.
+    pause
+)
+goto :eof
