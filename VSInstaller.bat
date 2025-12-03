@@ -50,17 +50,17 @@ goto MAIN_MENU
 
 :EDITION_1
 set "VS_EXE=vs_enterprise.exe"
-set "VS_URL=https://aka.ms/vs/18/insiders/vs_Enterprise.exe"
+set "VS_URL=https://aka.ms/vs/18/Stable/vs_enterprise.exe"
 goto NEXT_STEP
 
 :EDITION_2
 set "VS_EXE=vs_professional.exe"
-set "VS_URL=https://aka.ms/vs/18/insiders/vs_Professional.exe"
+set "VS_URL=https://aka.ms/vs/18/Stable/vs_professional.exe"
 goto NEXT_STEP
 
 :EDITION_3
 set "VS_EXE=vs_community.exe"
-set "VS_URL=https://aka.ms/vs/18/insiders/vs_Community.exe"
+set "VS_URL=https://aka.ms/vs/18/Stable/vs_community.exe"
 goto NEXT_STEP
 
 :NEXT_STEP
