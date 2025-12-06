@@ -34,6 +34,11 @@ if not exist "%LAYOUT_DIR%" mkdir "%LAYOUT_DIR%"
 echo Default layout directory: %LAYOUT_DIR%
 
 REM ==========================
+REM Define version variables
+set "LATEST_VERSION=0.0.0"
+set "LOCAL_VERSION=0.0.0"
+
+REM ==========================
 REM Ask user which edition to install
 :MAIN_MENU
 echo.
@@ -76,12 +81,14 @@ echo 1 - Download/Update bootstrapper and create offline layout
 echo 2 - Install from existing offline layout
 echo 3 - Check for old workloads from existing offline layout
 echo 4 - Delete old workloads listed in .log file and remove .log file
-set /p ACTION_CHOICE=Enter number [1-4]:
+echo 5 - Check for latest Visual Studio 2026 version
+set /p ACTION_CHOICE=Enter number [1-5]:
 
 if "%ACTION_CHOICE%"=="1" goto ACTION_1
 if "%ACTION_CHOICE%"=="2" goto ACTION_2
 if "%ACTION_CHOICE%"=="3" goto ACTION_3
 if "%ACTION_CHOICE%"=="4" goto ACTION_4
+if "%ACTION_CHOICE%"=="5" goto ACTION_5
 goto ACTION_MENU
 
 :ACTION_1
@@ -201,6 +208,36 @@ if /i "%CONFIRM%"=="Y" (
 ) else (
     echo Deletion cancelled by user.
 )
+pause
+goto ACTION_MENU
+
+:ACTION_5
+REM ==========================
+REM Get latest version from web
+
+REM First check if file exists
+if not exist "%VS_EXE%" (
+    echo.
+    echo ERROR: %VS_EXE% not found!
+    echo.
+    echo Please run option 1 first to download Visual Studio.
+    echo.
+    pause
+    goto ACTION_MENU
+)
+REM Get file version
+set "FILE_VER="
+for /f "delims=" %%v in ('powershell -Command "(Get-Item '%VS_EXE%').VersionInfo.FileVersion" 2^>nul') do (
+    set "FILE_VER=%%v"
+)
+echo.
+echo FILE VERSION: %FILE_VER%
+echo.
+REM Now check latest version online
+echo Please wait while checking the release notes...
+set "ps_command=$url = 'https://learn.microsoft.com/en-us/visualstudio/releases/2026/release-notes'; $content = (Invoke-WebRequest -Uri $url -UseBasicParsing).Content; $matches = [regex]::Matches($content, '<h2 id=\"([0-9]+\.[0-9]+(?:\.[0-9]+)?)\"'); if ($matches.Count -gt 0) { $versions = $matches | %% { $_.Groups[1].Value }; $latest = $versions | Sort-Object { [Version]$_ } -Descending | Select -First 1; Write-Host 'SUCCESS: Found ' -NoNewline -ForegroundColor Green; Write-Host $versions.Count 'versions'; Write-Host ''; Write-Host 'All versions:'; $versions | %% { Write-Host '  - ' $_ }; Write-Host ''; Write-Host 'LATEST VERSION: ' -NoNewline -ForegroundColor Yellow; Write-Host $latest -ForegroundColor White -BackgroundColor DarkRed } else { Write-Host 'ERROR: No versions found!' -ForegroundColor Red }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "%ps_command%"
+timeout /t -1 >nul
 pause
 goto ACTION_MENU
 
