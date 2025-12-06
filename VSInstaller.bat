@@ -34,11 +34,6 @@ if not exist "%LAYOUT_DIR%" mkdir "%LAYOUT_DIR%"
 echo Default layout directory: %LAYOUT_DIR%
 
 REM ==========================
-REM Define version variables
-set "LATEST_VERSION=0.0.0"
-set "LOCAL_VERSION=0.0.0"
-
-REM ==========================
 REM Ask user which edition to install
 :MAIN_MENU
 echo.
@@ -327,3 +322,4 @@ if !ISOLD! EQU 1 (
 )
 
 goto :eof
+
