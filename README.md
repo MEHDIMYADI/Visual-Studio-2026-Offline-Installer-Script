@@ -2,7 +2,7 @@
 
 > **⚠️ Deprecated / Superseded**
 > This script is no longer maintained. Please use the new WinForms-based
-> app instead: [Visual Studio Offline Setup Utility](https://github.com/MEHDIMYADI/VSOfflineTool)
+> app instead: [Visual Studio Offline Setup Utility](https://github.com/MEHDIMYADI/VS-Offline-Setup-Utility)
 
 A Windows batch script to automate the process of downloading, updating, and running **Visual Studio 2026** in **offline layout mode**.  
 Currently based on **Insider builds** – the script will be updated once the **official release (RTM)** is available.  
